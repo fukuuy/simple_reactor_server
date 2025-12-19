@@ -8,9 +8,8 @@ bool Reactor::AddEvent(Event& event)
 	ev.data.ptr = &event;
 	ev.events = event.event();
 
-	int opt = (event.status() == 1) ? EPOLL_CTL_MOD : EPOLL_CTL_ADD;
-
 	pthread_mutex_lock(&_epmutex);
+	int opt = (event.status() == 1) ? EPOLL_CTL_MOD : EPOLL_CTL_ADD;
 	int ret = epoll_ctl(_epfd, opt, event.fd(), &ev);
 	pthread_mutex_unlock(&_epmutex);
 
@@ -77,7 +76,7 @@ void Reactor::loop()
 		int ready_num = epoll_wait(_epfd, active_events, 1024, -1);
 		
 		if (ready_num == -1) {
-			if (errno == EAGAIN || errno == EWOULDBLOCK) continue;
+			if (errno == EINTR) continue;
 			throw runtime_error("epoll_wait failed");
 			return;
 		} 

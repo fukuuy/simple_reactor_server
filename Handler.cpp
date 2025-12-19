@@ -4,19 +4,23 @@
 int Handler::handleAccpet(int listen_fd, void* arg)
 {
     Reactor* reactor = static_cast<Reactor*>(arg);
- 
+    sockaddr_in caddr;
+    socklen_t len = sizeof(caddr);
 
-    while (true) {
-        sockaddr_in caddr;
-        socklen_t len = sizeof(caddr);
-
+    while (true) 
+    {
         int cfd = accept(listen_fd, (sockaddr*)&caddr, &len);
         if (cfd == -1) {
-            if (errno == EAGAIN || errno == EWOULDBLOCK) {
-                break;
+            if (errno == EAGAIN || errno == EWOULDBLOCK) break;
+            else if (errno == EINTR) 
+            {
+                cout << "accept interrupted by signal, retrying..." << endl;
+                continue;
             }
-            else {
+            else
+            {
                 throw std::runtime_error(string("accept error: ") + strerror(errno));
+                break;
             }
         }
 

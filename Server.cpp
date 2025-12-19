@@ -22,7 +22,11 @@ bool Server::start()
 bool Server::AddReactor(Reactor* reactor, Event::callback Accept_cb)
 {
     if (listen_fd == -1) return false;
-
+    int flags = fcntl(listen_fd, F_SETFL, O_NONBLOCK);
+    if (flags == -1) {
+        close(listen_fd);
+        throw runtime_error("fcntl set nonblock error");
+    }
     Event& event = reactor->get_events()[listen_fd];
     event.set(listen_fd, EPOLLIN | EPOLLET, Accept_cb, reactor);
     reactor->AddEvent(event);
