@@ -1,9 +1,10 @@
 ﻿#pragma once
-#include"Reactor.h"
+#include"EventLoop.h"
 #include<sys/socket.h>
 #include <arpa/inet.h>
 #include <fcntl.h>
 #include<cstring>
+#include"ReactorThreadPool.h"
 
 class Server
 {
@@ -22,11 +23,11 @@ public:
 
 		memset(&saddr, 0, sizeof(saddr));
 		saddr.sin_family = AF_INET;
-		saddr.sin_port = htons(port);
+		saddr.sin_port = htons(static_cast<uint16_t>(port));
 		if (inet_pton(AF_INET, ip.c_str(), &saddr.sin_addr) <= 0)
 		{
 			close(listen_fd);
-			throw std::runtime_error("inet_pton error");
+			throw runtime_error("inet_pton error");
 		}
 		cout << "Server is created" << endl;
 	}
@@ -44,18 +45,22 @@ public:
 	}
 	
 	bool start();
-	bool AddReactor(Reactor* reactor, Event::callback Accept_cb);
+	bool AddListener(EventLoop* reactor, callback Accept_cb);
+	void setThreadPool(ReactorThreadPool* pool) { _threadPool = pool; }
 
-	inline int get_fd() { return listen_fd; }
-	inline string get_ip() { return ip; }
-	inline int get_port() { return port; }
-	inline bool is_start() { return listen_fd != -1; }
-	inline bool is_stop() { return listen_fd == -1; }
+	int get_fd() { return listen_fd; }
+	string get_ip() { return ip; }
+	int get_port() { return port; }
+    ReactorThreadPool* getThreadPool() { return _threadPool; }
+	bool is_start() { return listen_fd != -1; }
+	bool is_stop() { return listen_fd == -1; }
 private:
 	int listen_fd;
 
 	string ip;
     int port;
 	struct sockaddr_in saddr;
+
+	ReactorThreadPool* _threadPool;
 };
 

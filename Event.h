@@ -5,12 +5,14 @@
 #include<functional>
 
 using namespace std;
+using callback = function<int(int, void*)>;
+
 
 class Event
 {
 public:
 	static constexpr int MAX_BUFFER_SIZE = 1024;
-	using callback = function<int(int, void*)>;
+
 	inline void close()
 		{
 			if (_fd != -1)
@@ -24,6 +26,7 @@ public:
 	Event() : _fd(-1), _status(0), _len(0), _handledata(nullptr), _arg(nullptr)  
 	{
 		memset(_buffer, 0, MAX_BUFFER_SIZE);
+		update_active();
 	}
 
 	~Event()

@@ -1,18 +1,20 @@
 ﻿#include"Server.h"
 #include"Handler.h"
-#include"ThreadPool.h"
 
 int main()
 {
 	Server server("192.168.80.128", 10000);
-    Reactor reactor;
-    ThreadPool threadpool(3,100);
+    EventLoop baseloop; 
+    ReactorThreadPool threadPool(&baseloop);
 
-    server.AddReactor(&reactor, Handler::handleAccpet);
+    threadPool.setThreadNum(3);
+    threadPool.start();
+
+    server.setThreadPool(&threadPool);
+
+    server.AddListener(&baseloop, Handler::handleAccpet);
     server.start();
-    //cout << "server fd status: " << reactor.findevent(server.get_fd()).status() << endl;
-    reactor.AddThreadPool(&threadpool);
-    reactor.loop();
+    baseloop.loop();
 
 	return 0;
 }

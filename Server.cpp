@@ -19,7 +19,7 @@ bool Server::start()
     return true;
 }
 
-bool Server::AddReactor(Reactor* reactor, Event::callback Accept_cb)
+bool Server::AddListener(EventLoop* reactor, callback Accept_cb)
 {
     if (listen_fd == -1) return false;
     int flags = fcntl(listen_fd, F_SETFL, O_NONBLOCK);
@@ -28,7 +28,7 @@ bool Server::AddReactor(Reactor* reactor, Event::callback Accept_cb)
         throw runtime_error("fcntl set nonblock error");
     }
     Event& event = reactor->get_events()[listen_fd];
-    event.set(listen_fd, EPOLLIN | EPOLLET, Accept_cb, reactor);
+    event.set(listen_fd, EPOLLIN | EPOLLET, Accept_cb, this);
     reactor->AddEvent(event);
     return true;
 }

@@ -1,9 +1,10 @@
 ﻿#include "Handler.h"
-
+#include "Server.h"
 
 int Handler::handleAccpet(int listen_fd, void* arg)
 {
-    Reactor* reactor = static_cast<Reactor*>(arg);
+    Server* server = static_cast<Server*>(arg);
+    ReactorThreadPool* threadPool = server->getThreadPool();
     sockaddr_in caddr;
     socklen_t len = sizeof(caddr);
 
@@ -19,7 +20,7 @@ int Handler::handleAccpet(int listen_fd, void* arg)
             }
             else
             {
-                throw std::runtime_error(string("accept error: ") + strerror(errno));
+                throw runtime_error(string("accept error: ") + strerror(errno));
                 break;
             }
         }
@@ -30,9 +31,11 @@ int Handler::handleAccpet(int listen_fd, void* arg)
             throw runtime_error(string("set fd nonblock error") + strerror(errno));
         }
 
-        Event& event = reactor->get_events()[cfd];
-        event.set(cfd, EPOLLIN | EPOLLET, handleRecv, reactor);
-        if (!reactor->AddEvent(event)) {
+        EventLoop* ioLoop = threadPool->getNextLoop();
+
+        Event& event = ioLoop->get_events()[cfd];
+        event.set(cfd, EPOLLIN | EPOLLET, handleRecv, ioLoop);
+        if (!ioLoop->AddEvent(event)) {
             close(cfd);
             cout << "Failed to add event for fd: " << cfd << endl;
             continue;
@@ -46,7 +49,7 @@ int Handler::handleAccpet(int listen_fd, void* arg)
 
 int Handler::handleRecv(int fd, void* arg)
 {
-    Reactor* reactor = static_cast<Reactor*>(arg);
+    EventLoop* reactor = static_cast<EventLoop*>(arg);
     Event& event = reactor->get_events()[fd];
 
     int total_len = 0;
@@ -79,6 +82,7 @@ int Handler::handleRecv(int fd, void* arg)
         event.set_len(total_len);
         cout << "Receive [fd: " << fd << "] data : "<< event.buffer() << endl;
 
+        event.update_active();
         reactor->ModEvent(event, EPOLLOUT | EPOLLET, total_len, Handler::handleSend);
         reactor->AddEvent(event);
     }
@@ -88,7 +92,7 @@ int Handler::handleRecv(int fd, void* arg)
 
 int Handler::handleSend(int fd, void* arg)
 {
-    Reactor* reactor = static_cast<Reactor*>(arg);
+    EventLoop* reactor = static_cast<EventLoop*>(arg);
     Event& event = reactor->get_events()[fd];
 
     reactor->DelEvent(event);
@@ -107,6 +111,7 @@ int Handler::handleSend(int fd, void* arg)
                 memmove(event.buffer(), buffer + total_sent, remain_len);
                 event.buffer()[remain_len] = '\0';
 
+                event.update_active();
                 reactor->ModEvent(event, EPOLLOUT | EPOLLET, remain_len, Handler::handleSend);
                 reactor->AddEvent(event);
 
@@ -137,6 +142,7 @@ int Handler::handleSend(int fd, void* arg)
         cout << "Send [fd: " << fd << "] data: " << event.buffer() << endl;
     }
 
+    event.update_active();
     reactor->ModEvent(event, EPOLLIN | EPOLLET, 0, Handler::handleRecv);
     reactor->AddEvent(event);
 
