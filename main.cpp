@@ -1,19 +1,17 @@
 ﻿#include"Server.h"
 #include"Handler.h"
-
+#include <thread>
 int main()
 {
 	Server server("192.168.80.128", 10000);
     EventLoop baseloop; 
     ReactorThreadPool threadPool(&baseloop);
 
-    threadPool.setThreadNum(3);
-    threadPool.start();
-
+    threadPool.setThreadNum(thread::hardware_concurrency());
     server.setThreadPool(&threadPool);
-
-    server.AddListener(&baseloop, Handler::handleAccpet);
     server.start();
+    server.AddListener(&baseloop, Handler::handleAccpet);
+    threadPool.start();
     baseloop.loop();
 
 	return 0;

@@ -29,6 +29,6 @@ bool Server::AddListener(EventLoop* reactor, callback Accept_cb)
     }
     Event& event = reactor->get_events()[listen_fd];
     event.set(listen_fd, EPOLLIN | EPOLLET, Accept_cb, this);
-    reactor->AddEvent(event);
+    reactor->addEvent(event);
     return true;
 }

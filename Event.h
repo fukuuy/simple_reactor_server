@@ -11,7 +11,7 @@ using callback = function<int(int, void*)>;
 class Event
 {
 public:
-	static constexpr int MAX_BUFFER_SIZE = 1024;
+	static constexpr int MAX_BUFFER_SIZE = 4096;
 
 	inline void close()
 		{
@@ -25,7 +25,7 @@ public:
 
 	Event() : _fd(-1), _status(0), _len(0), _handledata(nullptr), _arg(nullptr)  
 	{
-		memset(_buffer, 0, MAX_BUFFER_SIZE);
+		memset(_buffer, 0, MAX_BUFFER_SIZE + 1);
 		update_active();
 	}
 
@@ -34,13 +34,21 @@ public:
 		this->close();
 	}
 
+	//监听事件类型
 	uint32_t event() const { return _event; }
+	//事件在epoll中的状态
 	bool status() const { return _status; }
+	//事件关联套接字
 	int fd() const { return _fd; }
+	//数据缓冲区
 	char* buffer() { return _buffer; }
+	//参数指针，指向EventLoop
 	void* arg() const { return _arg; }
+	//缓冲区长度
 	int len() const { return _len; }
-	callback handledata() const { return _handledata; }  
+	//事件回调函数
+	callback handledata() const { return _handledata; } 
+	//事件最后活跃时间戳
 	chrono::system_clock::time_point last_active() const { return _last_active; } 
 
 	void set_fd(const int fd) { _fd = fd; }
@@ -58,20 +66,21 @@ public:
 		_arg = arg;
 		_handledata = cb;
 		_len = 0;
-		memset(_buffer, 0, MAX_BUFFER_SIZE);
+		memset(_buffer, 0, MAX_BUFFER_SIZE + 1);
 		update_active();
 	}
 
 private:
-
+	
 	int _fd;
 	uint32_t _event;
-
 	bool _status;
 
-	char _buffer[MAX_BUFFER_SIZE];
+	
+	char _buffer[MAX_BUFFER_SIZE + 1];
 	int _len;
 
+	
 	callback _handledata;
 	void* _arg;
 

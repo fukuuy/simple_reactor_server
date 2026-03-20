@@ -19,10 +19,12 @@ public:
         }
     }
 
+    //创建线程并等待事件循环初始化完成
     EventLoop* startLoop();
 
 private:
     static void* threadFunc(void* arg);
+    //创建事件循环
     void runInThread();
 
     EventLoop* loop_;
