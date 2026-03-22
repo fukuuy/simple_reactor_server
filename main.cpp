@@ -3,7 +3,7 @@
 #include <thread>
 int main()
 {
-	Server server("192.168.80.128", 10000);
+	Server server("0.0.0.0", 10000);
     EventLoop baseloop; 
     ReactorThreadPool threadPool(&baseloop);
 
