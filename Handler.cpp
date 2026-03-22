@@ -7,6 +7,13 @@ int Handler::handleRecv(int fd, void* arg)
     EventLoop* reactor = static_cast<EventLoop*>(arg);
     Event& event = reactor->get_events()[fd];
 
+    if (isConnectionTimeout(event)) {
+        reactor->delEvent(event);
+        event.close();
+        reactor->removeEvent(event);
+        return -1;
+    }
+
     int total_len = 0;
     while (true)
     {
@@ -63,9 +70,10 @@ int Handler::handleRecv(int fd, void* arg)
             strncpy(event.buffer(), error_resp.c_str(), error_resp.size());
             event.set_len(error_resp.size());
         }
+        //解析完成
 
         event.update_active();
-        reactor->modEvent(event, EPOLLOUT | EPOLLET, total_len, Handler::handleSend);
+        reactor->modEvent(event, EPOLLOUT | EPOLLET, event.len(), Handler::handleSend);
         reactor->addEvent(event);
     }
 
@@ -76,6 +84,13 @@ int Handler::handleSend(int fd, void* arg)
 {
     EventLoop* reactor = static_cast<EventLoop*>(arg);
     Event& event = reactor->get_events()[fd];
+
+    if (isConnectionTimeout(event)) {
+        reactor->delEvent(event);
+        event.close();
+        reactor->removeEvent(event);
+        return -1;
+    }
 
     reactor->delEvent(event);
 
@@ -121,20 +136,17 @@ int Handler::handleSend(int fd, void* arg)
         }
     }
 
-    /* if (total_sent > 0)
-      {
-          cout << "Send [fd: " << fd << "] data:\n " << event.buffer() << endl;
-      }*/
+    if (total_sent > 0)
+    {
+        //cout << "Send [fd: " << fd << "] data:\n " << event.buffer() << endl;
+    }
 
-      /*event.update_active();
-      event.set_len(0);
-      memset(event.buffer(), 0, Event::MAX_BUFFER_SIZE + 1);
+    event.update_active();
+    event.set_len(0);
+    memset(event.buffer(), 0, Event::MAX_BUFFER_SIZE + 1);
 
-      reactor->modEvent(event, EPOLLIN | EPOLLET, 0, Handler::handleRecv);
-      reactor->addEvent(event);*/
-
-    event.close();
-    reactor->removeEvent(event);
+    reactor->modEvent(event, EPOLLIN | EPOLLET, 0, Handler::handleRecv);
+    reactor->addEvent(event);
 
     return total_sent;
 }
@@ -159,7 +171,7 @@ int Handler::handleAccpet(int listen_fd, void* arg)
             }
             else
             {
-                /*throw runtime_error(string("accept error: ") + strerror(errno));*/
+                throw runtime_error(string("accept error: ") + strerror(errno));
                 break;
             }
         }
@@ -168,7 +180,7 @@ int Handler::handleAccpet(int listen_fd, void* arg)
         if (flags == -1)
         {
             close(cfd);
-            /*throw runtime_error(string("set fd nonblock error") + strerror(errno));*/
+            throw runtime_error(string("set fd nonblock error") + strerror(errno));
         }
 
         EventLoop* ioLoop = threadPool->getNextLoop();
@@ -182,8 +194,7 @@ int Handler::handleAccpet(int listen_fd, void* arg)
             continue;
         }
 
-        /*cout << "New connect: [IP: " << inet_ntoa(caddr.sin_addr)
-            << ", port:" << ntohs(caddr.sin_port) << "]" << endl;*/
+        //cout << "New connect: [IP: " << inet_ntoa(caddr.sin_addr) << ", port:" << ntohs(caddr.sin_port) << "]" << endl;
     }
     return 1;
 }

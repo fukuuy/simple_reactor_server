@@ -1,5 +1,6 @@
 ﻿#pragma once
 #include"Event.h"
+#include"Handler.h"
 #include<sys/epoll.h>
 #include<arpa/inet.h>
 #include<map>
@@ -15,7 +16,7 @@ public:
 		_epfd = epoll_create(1);
 		if (_epfd == -1) throw runtime_error("epoll_create error");
 		pthread_mutex_init(&_evmutex, nullptr);
-		_threadId = pthread_self();  
+		_threadId = pthread_self();
 	}
 
 	~EventLoop()
@@ -27,7 +28,7 @@ public:
 	//将事件添加到循环中
 	bool addEvent(Event& event);
 	//从循环中删除事件
-    bool delEvent(Event& event);
+	bool delEvent(Event& event);
 	//修改事件的监听类型、数据长度和回调函数
 	bool modEvent(Event& event, const uint32_t type, int len, const callback callback);
 	//将事件存入事件映射表中
@@ -41,11 +42,7 @@ public:
 
 	void quit() { _quit = true; }
 
-	void assertInLoopThread() {
-		if (pthread_self() != _threadId) {
-			
-		}
-	}
+	void cleanTimeoutConnections();
 private:
 	//epoll 实例的文件描述符
 	int _epfd;

@@ -47,8 +47,8 @@ bool EventLoop::delEvent(Event& event)
 bool EventLoop::modEvent(Event& event, const uint32_t type, int len, const callback callback)
 {
 	event.set_event(type);
-    event.set_len(len);
-    event.set_handledata(callback);
+	event.set_len(len);
+	event.set_handledata(callback);
 	return true;
 }
 
@@ -63,28 +63,64 @@ bool EventLoop::setEvent(Event& event)
 bool EventLoop::removeEvent(Event& event)
 {
 	pthread_mutex_lock(&_evmutex);
-    this->get_events().erase(event.fd());
+	this->get_events().erase(event.fd());
 	pthread_mutex_unlock(&_evmutex);
 	return true;
 }
 
+
+void EventLoop::cleanTimeoutConnections() 
+{
+	pthread_mutex_lock(&_evmutex);
+	vector<int> timeout_fds;
+	for (auto& pair : _events) 
+	{
+		int fd = pair.first;
+		Event& event = pair.second;
+		if (Handler::isConnectionTimeout(event)) 
+		{
+			timeout_fds.push_back(fd);
+		}
+	}
+	pthread_mutex_unlock(&_evmutex);
+	for (int fd : timeout_fds) 
+	{
+		if (_events.count(fd)) 
+		{
+			Event& event = _events[fd];
+			delEvent(event);
+			event.close();
+			removeEvent(event);
+		}
+	}
+}
+
 void EventLoop::loop()
 {
-	if (_epfd == -1) 
+	if (_epfd == -1)
 	{
 		throw runtime_error("EventLoop not initialized");
 	}
 
 	struct epoll_event active_events[MAX_EVENT_NUM];
-	while (!_quit)  
+
+	auto last_clean_time = chrono::system_clock::now();
+	while (!_quit)
 	{
-		int ready_num = epoll_wait(_epfd, active_events, MAX_EVENT_NUM, -1);
+		int ready_num = epoll_wait(_epfd, active_events, MAX_EVENT_NUM, 1000);
 
 		if (ready_num == -1)
 		{
 			if (errno == EINTR) continue;
 			throw runtime_error("epoll_wait failed");
 			return;
+		}
+
+		auto now = chrono::system_clock::now();
+		auto duration = chrono::duration_cast<chrono::seconds>(now - last_clean_time).count();
+		if (duration >= 5) {
+			cleanTimeoutConnections();
+			last_clean_time = now;
 		}
 
 		for (int i = 0; i < ready_num; ++i)

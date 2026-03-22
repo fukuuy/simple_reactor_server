@@ -44,7 +44,8 @@ string HttpParser::buildResponse(int status_code, const string& content, const s
     response << "HTTP/1.1 " << status_code << " " << status_msg << "\r\n";
     response << "Content-Type: " << content_type << "\r\n";
     response << "Content-Length: " << content.size() << "\r\n";
-    response << "Connection: close\r\n";
+    response << "Connection: keep-alive\r\n";
+    response << "Keep-Alive: timeout=10, max=1000\r\n";
     response << "\r\n";
     response << content;
 
